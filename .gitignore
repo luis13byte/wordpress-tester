@@ -1,3 +1,11 @@
+# Secret data
+cypress.env.json
+
+# Cypress
+cypress/downloads
+cypress/screenshots
+cypress/videos
+
 # Logs
 logs
 *.log

@@ -1,0 +1,140 @@
+/* eslint-disable no-undef */
+const website = 'https://www.example.com'
+const user = Cypress.env().www_example_com_user
+const pass = Cypress.env().www_example_com_pass
+
+const cleanWebsite = website.replace('https://', '').replace('http://', '')
+const screenshotsFolder = `cypress/screenshots/${cleanWebsite}.cy.js`
+
+describe('WordPress generic E2E test', function () {
+  const errorMessage = 'Ha habido un error crítico en esta web'
+  const errorMessageEnglish = 'There has been a critical error on your website'
+  const maintenanceMessage = 'No disponible temporalmente por un mantenimiento programado.'
+  const maintenanceMessageEnglish = 'Briefly unavailable for scheduled maintenance.'
+
+  it('Pages must not contain critical error messages', () => {
+    const pagesToCheck = ['/', '/wp-admin']
+
+    pagesToCheck.forEach((page) => {
+      cy.visit(`${website}${page}`)
+        .then(() => {
+          cy.get('body').should('not.contain', errorMessage)
+            .should('not.contain', errorMessageEnglish)
+        })
+    })
+  })
+
+  it('Pages must not contain maintenance messages', () => {
+    const pagesToCheck = ['/', '/wp-admin']
+
+    pagesToCheck.forEach((page) => {
+      cy.visit(`${website}${page}`)
+        .then(() => {
+          cy.get('body').should('not.contain', maintenanceMessage)
+            .should('not.contain', maintenanceMessageEnglish)
+        })
+    })
+  })
+
+  it('Basic navigation checks', () => {
+    cy.visit(`${website}/contact`)
+    cy.get('.entry-content').find('input').should('be.visible')
+    cy.get('.entry-content').find('a').first().click()
+
+    // add checks here
+  })
+
+  it('Checks the navigation bar links and response status', () => {
+    cy.visit(website)
+
+    cy.get('nav a').each(($el, index, $list) => {
+      const href = $el.prop('href')
+      cy.request(href)
+        .its('status')
+        .should('eq', 200)
+    })
+  })
+
+  it('Can log in & check error messages on the plugins/themes page', () => {
+    cy.visit(`${website}/wp-login.php`)
+    cy.wait(1000)
+    cy.get('#user_login').type(user)
+    cy.get('#user_pass').type(pass)
+    cy.get('#wp-submit').click()
+    cy.contains(/Howdy|Hola/)
+
+    cy.get('#menu-plugins').click()
+    cy.get('div.notice.notice-error.notice-alt.inline.hidden p').should('have.text', '')
+
+    cy.get('#menu-appearance').click()
+    cy.get('.theme.active button.more-details').click()
+    cy.get('div.notice.notice-error.notice-alt.inline.hidden p').should('have.text', '')
+  })
+
+  it('Checks that all images have loaded', () => {
+    cy.visit(website)
+    cy.get('img').each(($img) => {
+      cy.request($img[0].src).its('status').should('equal', 200)
+    })
+  })
+
+  it('Checks the loading status of scripts', () => {
+    cy.visit(website)
+    cy.get('script').each(($script) => {
+      const scriptSrc = $script.prop('src')
+      if (scriptSrc) {
+        cy.request({
+          url: scriptSrc,
+          failOnStatusCode: false
+        }).its('status').should('equal', 200)
+      }
+    })
+  })
+
+  it('Checks the loading status of fonts and styles', () => {
+    cy.visit(website)
+    cy.get('link[rel="stylesheet"]', { timeout: 10000 }).each(($link) => {
+      const linkHref = $link.prop('href')
+      cy.request({
+        url: linkHref,
+        failOnStatusCode: false
+      }).its('status').should('equal', 200)
+    })
+    cy.get('style').each(($style) => {
+      const styleText = $style.text()
+      // eslint-disable-next-line no-unused-expressions
+      expect(styleText).to.not.be.empty
+    })
+  })
+
+  it('Compare screenshots of dev.example.com and example.com', () => {
+    cy.visit(website)
+    cy.wait(2000)
+    cy.screenshot(`${cleanWebsite}`)
+
+    cy.visit(`${website}`)
+    cy.wait(2000)
+    cy.screenshot(`dev.${cleanWebsite}`)
+
+    cy.readFile(`${screenshotsFolder}/${cleanWebsite}.png`).then(image1 => {
+      cy.readFile(`${screenshotsFolder}/dev.${cleanWebsite}.png`).then(image2 => {
+        let differentPixels = 0
+        const totalPixels = image1.length
+        const allowedDifferentPixels = totalPixels * 0.02
+
+        for (let i = 0; i < totalPixels; i++) {
+          if (image1[i] !== image2[i]) {
+            differentPixels++
+          }
+        }
+
+        expect(differentPixels).to.be.lessThan(allowedDifferentPixels)
+      })
+    })
+  })
+})
+
+after(() => {
+  cy.task('removeFile', `${screenshotsFolder}/${cleanWebsite}.png`)
+  cy.task('removeFile', `${screenshotsFolder}/dev.${cleanWebsite}.png`)
+})

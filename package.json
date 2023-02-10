@@ -1,0 +1,23 @@
+{
+  "name": "wp-tester",
+  "version": "1.0.0",
+  "description": "Application for testing in Wordpress environments",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "test:e2e": "npx cypress run",
+    "eslint": "standard",
+    "eslint:fix": "standard --fix"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "cypress": "^12.5.1",
+    "fs": "^0.0.1-security"
+  },
+  "devDependencies": {
+    "standard": "^17.0.0"
+  },
+  "eslintConfig": {
+    "extends": "./node_modules/standard/eslintrc.json"
+  }
+}
